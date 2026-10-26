@@ -1,0 +1,77 @@
+name: LYRA PINME SERVER
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # Har 4 ghante baad chalega
+  workflow_dispatch:
+
+concurrency:
+  group: lyra-pinme-server
+  cancel-in-progress: true # Naya action chalne par purana band ho jayega
+
+jobs:
+  run-server:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # link.txt aur dummy.txt save karne ke liye
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          pip install flask
+          npm install -g pinme
+          wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
+          chmod +x cloudflared
+
+      # Dummy file update (Har 4 ghante)
+      - name: Update Dummy File
+        run: |
+          echo "Last Update: $(date)" > dummy.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dummy.txt
+          git commit -m "Auto-update dummy.txt [skip ci]" || echo "No changes"
+          git push
+
+      # Server start karein aur link save karein
+      - name: Start Server and Tunnel
+        run: |
+          # Python app background mein chalayein
+          python app.py > app.log 2>&1 &
+          sleep 3
+          
+          # Cloudflare tunnel start karein
+          ./cloudflared tunnel --url http://127.0.0.1:5000 > cf.log 2>&1 &
+          sleep 15
+          
+          # Link extract karein
+          URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cf.log | head -n 1)
+          
+          if [ -z "$URL" ]; then
+            echo "Error: Could not get TryCloudflare link."
+            exit 1
+          fi
+          
+          # Link ko file mein save karein aur push karein
+          echo "$URL" > link.txt
+          git add link.txt
+          git commit -m "Update TryCloudflare Link [skip ci]"
+          git push
+          
+          echo "Aapki website live hai: $URL"
+          
+          # Server ko 3.5 ghante tak chalta rakhein (GitHub ki max time limit se pehle)
+          sleep 12600
