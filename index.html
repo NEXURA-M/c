@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LYRA PINME - Created by Muhammad Taqi</title>
+<!-- Puter.js لائبریری شامل کریں -->
+<script src="https://js.puter.com/v2/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
 <style>
   :root { --bg: #07070c; --surface: #12121a; --stroke: #2a2a35; --text: #f2f3f8; --brand: #7c5cff; --success: #2ee6a8; }
   body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
   .header { text-align: center; margin-bottom: 30px; }
   .header h1 { background: linear-gradient(90deg, #7c5cff, #21d4fd); -webkit-background-clip: text; color: transparent; margin: 0 0 10px; font-size: 2.5rem; }
-  .card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; padding: 30px; width: 100%; max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: none; }
-  .card.active { display: block; animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; padding: 30px; width: 100%; max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
   .input-group { margin-bottom: 20px; }
   label { display: block; font-size: 0.9rem; margin-bottom: 8px; color: #9aa0b5; }
   input[type="text"], textarea { width: 100%; padding: 12px; background: #0a0a0f; border: 1px solid var(--stroke); border-radius: 8px; color: #fff; font-family: inherit; box-sizing: border-box; transition: 0.3s; }
@@ -21,7 +21,6 @@
   .btn { background: linear-gradient(90deg, #7c5cff, #21d4fd); color: #fff; border: none; padding: 16px; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.3s; }
   .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(124,92,255,0.4); }
   .btn:disabled { background: #333; cursor: not-allowed; transform: none; box-shadow: none; }
-  .landing-btn { max-width: 300px; font-size: 1.2rem; padding: 20px; margin: 0 auto; display: block; }
   #result { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; background: rgba(46, 230, 168, 0.1); border: 1px solid var(--success); color: var(--success); text-align: center; word-wrap: break-word; }
   #result a { color: #8ce8ff; font-weight: bold; text-decoration: underline; }
 </style>
@@ -33,17 +32,9 @@
   <p style="color: #9aa0b5;">Created by Muhammad Taqi</p>
 </div>
 
-<!-- Landing Screen -->
-<div id="landing" class="card active" style="text-align: center;">
-  <h2 style="margin-top:0;">Welcome to LYRA PINME</h2>
-  <p style="color: #9aa0b5; margin-bottom: 30px;">Publish your HTML or ZIP files permanently. No tokens, no logins. Just publish.</p>
-  <button class="btn landing-btn" onclick="showForm()">Create Your Web 🚀</button>
-</div>
-
-<!-- Form Screen -->
-<div id="formScreen" class="card">
+<div class="card">
   <div class="input-group">
-    <label>Project Name (Unique)</label>
+    <label>Project Name (Unique Subdomain)</label>
     <input type="text" id="projectName" placeholder="my-first-website">
   </div>
   
@@ -63,11 +54,6 @@
 </div>
 
 <script>
-function showForm() {
-  document.getElementById('landing').classList.remove('active');
-  document.getElementById('formScreen').classList.add('active');
-}
-
 async function publishProject() {
   const projectName = document.getElementById('projectName').value.trim();
   const htmlCode = document.getElementById('htmlCode').value;
@@ -86,33 +72,33 @@ async function publishProject() {
   resultDiv.style.display = 'none';
 
   try {
-    const formData = new FormData();
-    formData.append('projectName', projectName);
-    formData.append('htmlCode', htmlCode);
+    // 1. Puter.js کا استعمال کرتے ہوئے فائل سسٹم بنائیں
+    const dirName = `lyra_${projectName}_${Date.now()}`;
+    await puter.fs.mkdir(dirName);
+
+    // 2. HTML کوڈ یا فائل کو محفوظ کریں
     if (fileInput) {
-      formData.append('file', fileInput);
+      if (fileInput.name.endsWith('.zip')) {
+        // ZIP فائل کو اپ لوڈ کریں (Puter.js خود بخود ایکسٹریکٹ نہیں کرتا، اس لیے ہم JSZip استعمال کر سکتے ہیں، لیکن آسانی کے لیے صرف HTML کو سپورٹ کر رہے ہیں)
+        alert('ZIP فائلیں فی الحال سپورٹڈ نہیں ہیں۔ براہ کرم HTML کوڈ پیسٹ کریں۔');
+        return;
+      } else {
+        const text = await fileInput.text();
+        await puter.fs.write(`${dirName}/index.html`, text);
+      }
+    } else if (htmlCode.trim()) {
+      await puter.fs.write(`${dirName}/index.html`, htmlCode);
+    } else {
+      throw new Error('Na code mila, na file!');
     }
 
-    const response = await fetch('/api/publish', {
-      method: 'POST',
-      body: formData
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Deployment failed");
+    // 3. Puter.js کے ذریعے ویب سائٹ ڈیپلائے کریں
+    const site = await puter.hosting.create(projectName, dirName);
+    const liveUrl = `https://${site.subdomain}.puter.site`;
 
     resultDiv.style.display = 'block';
-    let html = `<strong>Mubarak ho!</strong> Aapki website live ho gayi hai:<br><br>
-    <a href="${data.link}" target="_blank">${data.link}</a>`;
-    
-    // Agar Claim URL mila hai toh user ko permanent karne ka tareeqa batayein
-    if (data.claim_url) {
-      html += `<br><br><div style="background: rgba(124,92,255,0.2); padding: 10px; border-radius: 8px; border: 1px solid #7c5cff; color: #fff;">
-      <strong>Zaroori Hidayat:</strong> Is link ko <b>hamesha ke liye permanent</b> banane ke liye <a href="${data.claim_url}" target="_blank">Yahan Click Karein</a> aur apna email dal kar claim karein.
-      </div>`;
-    }
-    
-    resultDiv.innerHTML = html;
+    resultDiv.innerHTML = `<strong>Mubarak ho!</strong> Aapki website hamesha ke liye live ho gayi hai:<br><br>
+    <a href="${liveUrl}" target="_blank">${liveUrl}</a>`;
 
   } catch (error) {
     console.error(error);
