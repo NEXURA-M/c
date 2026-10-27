@@ -20,7 +20,8 @@ def publish():
     if not safe_name:
         return jsonify({"error": "Galat project name. Sirf letters, numbers, - aur _ use karein."}), 400
 
-    work_dir = os.path.join(tempfile.gettempdir(), 'lyra_pinme', safe_name)
+    # Temporary folder (Repo ke bahar, taake space full na ho)
+    work_dir = os.path.join(tempfile.gettempdir(), 'lyra_ship', safe_name)
     os.makedirs(work_dir, exist_ok=True)
 
     try:
@@ -33,6 +34,7 @@ def publish():
                     zip_ref.extractall(work_dir)
                 os.remove(filepath)
                 
+                # Agar zip ke andar ek hi folder hai to uske andar ki files bahar layen
                 items = os.listdir(work_dir)
                 if len(items) == 1 and os.path.isdir(os.path.join(work_dir, items[0])):
                     subfolder = os.path.join(work_dir, items[0])
@@ -45,33 +47,35 @@ def publish():
         else:
             return jsonify({"error": "Na code mila, na file!"}), 400
 
-        # PinMe Upload Command
-        result = subprocess.run(['pinme', 'upload', work_dir], capture_output=True, text=True, shell=True)
+        # ShipStatic Deploy (No Token Required)
+        result = subprocess.run(['npx', '@shipstatic/ship', work_dir], capture_output=True, text=True, shell=True)
         output = result.stdout + result.stderr
-        print("PinMe Output:", output) # Debugging ke liye log
+        print("ShipStatic Output:", output)
 
-        # 1. Pehle preview URL format dhoondein (https://pinme.eth.limo/#/preview/...)
-        link_match = re.search(r'https://[^\s]+eth\.limo[^\s]*', output)
+        # Live URL Extract karein
+        link_match = re.search(r'https://[a-zA-Z0-9-]+\.shipstatic\.com', output)
         
         if link_match:
             link = link_match.group(0)
+            # Claim URL extract karein (permanent karne ke liye)
+            claim_match = re.search(r'https://[^\s]+claim[^\s]*', output)
+            claim_url = claim_match.group(0) if claim_match else None
+            
+            return jsonify({
+                "success": True, 
+                "link": link,
+                "claim_url": claim_url
+            })
         else:
-            # 2. Agar preview URL na mile, toh CID (bafy...) dhoondein aur dweb.link ka link banayein
-            cid_match = re.search(r'\b(bafy[a-zA-Z0-9]+)\b', output)
-            if cid_match:
-                link = f"https://{cid_match.group(1)}.ipfs.dweb.link"
-            else:
-                # Agar dono na mile toh error ke sath PinMe ka poora output bhejein
-                return jsonify({
-                    "error": "PinMe link generate nahi hua.",
-                    "details": output # Asal error dekhne ke liye
-                }), 500
-
-        return jsonify({"success": True, "link": link})
+            return jsonify({
+                "error": "ShipStatic link generate nahi hua.",
+                "details": output[-300:]
+            }), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
+        # Kaam hone ke baad temporary folder delete karein (Repo space bachega)
         if os.path.exists(work_dir):
             shutil.rmtree(work_dir)
 
