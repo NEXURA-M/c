@@ -22,8 +22,8 @@
   .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(124,92,255,0.4); }
   .btn:disabled { background: #333; cursor: not-allowed; transform: none; box-shadow: none; }
   .landing-btn { max-width: 300px; font-size: 1.2rem; padding: 20px; margin: 0 auto; display: block; }
-  #result { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; background: rgba(46, 230, 168, 0.1); border: 1px solid var(--success); color: var(--success); text-align: center; }
-  #result a { color: #8ce8ff; font-weight: bold; word-break: break-all; }
+  #result { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; background: rgba(46, 230, 168, 0.1); border: 1px solid var(--success); color: var(--success); text-align: center; word-wrap: break-word; }
+  #result a { color: #8ce8ff; font-weight: bold; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -36,7 +36,7 @@
 <!-- Landing Screen -->
 <div id="landing" class="card active" style="text-align: center;">
   <h2 style="margin-top:0;">Welcome to LYRA PINME</h2>
-  <p style="color: #9aa0b5; margin-bottom: 30px;">Publish your HTML or ZIP files permanently to IPFS. No tokens, no logins. Just publish.</p>
+  <p style="color: #9aa0b5; margin-bottom: 30px;">Publish your HTML or ZIP files permanently. No tokens, no logins. Just publish.</p>
   <button class="btn landing-btn" onclick="showForm()">Create Your Web 🚀</button>
 </div>
 
@@ -82,7 +82,7 @@ async function publishProject() {
   }
 
   btn.disabled = true;
-  btn.innerText = "Publishing to IPFS... (Wait)";
+  btn.innerText = "Publishing... (Wait)";
   resultDiv.style.display = 'none';
 
   try {
@@ -102,8 +102,17 @@ async function publishProject() {
     if (!response.ok) throw new Error(data.error || "Deployment failed");
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = `<strong>Mubarak ho!</strong> Aapki website permanently live ho gayi hai:<br><br>
+    let html = `<strong>Mubarak ho!</strong> Aapki website live ho gayi hai:<br><br>
     <a href="${data.link}" target="_blank">${data.link}</a>`;
+    
+    // Agar Claim URL mila hai toh user ko permanent karne ka tareeqa batayein
+    if (data.claim_url) {
+      html += `<br><br><div style="background: rgba(124,92,255,0.2); padding: 10px; border-radius: 8px; border: 1px solid #7c5cff; color: #fff;">
+      <strong>Zaroori Hidayat:</strong> Is link ko <b>hamesha ke liye permanent</b> banane ke liye <a href="${data.claim_url}" target="_blank">Yahan Click Karein</a> aur apna email dal kar claim karein.
+      </div>`;
+    }
+    
+    resultDiv.innerHTML = html;
 
   } catch (error) {
     console.error(error);
